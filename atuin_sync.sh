@@ -62,7 +62,7 @@ publish_file() {
   id=$(printf '%s\0%s' "$rel" "$hash" | sha256sum | cut -d' ' -f1)
   key=manifest.$id
   if [[ -n "$(kv_get "$key")" ]]; then               # already published (e.g. by us earlier)
-    set_ledger "$rel" "$(date +%s)" "$hash"; touch -- "$STATE/seen/$id"; return 0
+    set_ledger "$rel" "$(date +%s%N)" "$hash"; touch -- "$STATE/seen/$id"; return 0
   fi
 
   size=$(stat -c %s -- "$file")
@@ -86,7 +86,7 @@ PY
   [[ "$(sha_of "$file")" == "$hash" ]] || { log "changed during upload, retrying: $rel"; return 0; }
 
   sync_now                                            # chunks first, manifest second
-  ts=$(date +%s)
+  ts=$(date +%s%N)
   path_b64=$(python3 -c 'import base64,sys; print(base64.urlsafe_b64encode(sys.argv[1].encode()).decode())' "$rel")
   manifest=$(python3 -c 'import json,sys; print(json.dumps({"path_b64":sys.argv[1],"sha256":sys.argv[2],"size":int(sys.argv[3]),"chunks":int(sys.argv[4]),"ts":int(sys.argv[5])},separators=(",",":")))' \
              "$path_b64" "$hash" "$size" "$count" "$ts")

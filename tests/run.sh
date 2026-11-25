@@ -26,7 +26,7 @@ store, suffix, path, real, claimed = sys.argv[1:6]
 h = hashlib.sha256(claimed.encode()).hexdigest()
 open(f"{store}/chunk.{h}.0", "w").write(base64.b64encode(real.encode()).decode())
 m = {"path_b64": base64.urlsafe_b64encode(path.encode()).decode(), "sha256": h,
-     "size": len(claimed), "chunks": 1, "ts": 9999999999}
+     "size": len(claimed), "chunks": 1, "ts": 9000000000000000000}
 open(f"{store}/manifest.{int(suffix):064d}", "w").write(json.dumps(m, separators=(",", ":")))
 PY
 }
