@@ -31,7 +31,15 @@ kv_set() { atuin kv set -n "$NS" --key "$1" "$2" >/dev/null; }
 kv_get() { atuin kv get -n "$NS" "$1" 2>/dev/null || true; }
 
 sync_now() {
-  atuin sync >/dev/null || log "warning: atuin sync failed (offline? not logged in?)"
+  local out
+  if out=$(atuin sync 2>&1); then
+    # Show record traffic (e.g. "3/0 up/down to record store") only when something moved.
+    local traffic
+    traffic=$(grep -E '^[0-9]+/[0-9]+ up/down' <<<"$out" || true)
+    [[ -z "$traffic" || "$traffic" == "0/0 up/down"* ]] || log "atuin sync: $traffic"
+  else
+    log "WARNING: atuin sync failed: $(tail -n 2 <<<"$out" | tr '\n' ' ')"
+  fi
   # Records arrive in the record store; make sure they're built into the KV view.
   atuin kv rebuild >/dev/null 2>&1 || true
 }
