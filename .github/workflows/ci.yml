@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        run: shellcheck atuin_sync.sh tests/run.sh tests/fakebin/atuin
+      - name: Syntax check
+        run: bash -n atuin_sync.sh
+      - name: Integration tests
+        run: tests/run.sh

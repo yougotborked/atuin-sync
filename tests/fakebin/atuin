@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Minimal file-backed stand-in for `atuin` (kv set/get/list, sync, kv rebuild).
+# All "machines" sharing FAKE_ATUIN_STORE see the same store, like a synced account.
+set -euo pipefail
+store=${FAKE_ATUIN_STORE:?}
+case "${1:-}" in
+  sync) exit 0 ;;
+  kv)
+    shift
+    sub=$1
+    shift
+    ns=default
+    key=
+    args=()
+    while (($#)); do
+      case $1 in
+        -n) ns=$2; shift 2 ;;
+        --key) key=$2; shift 2 ;;
+        *) args+=("$1"); shift ;;
+      esac
+    done
+    mkdir -p "$store/$ns"
+    case $sub in
+      set) printf '%s' "${args[0]}" > "$store/$ns/$key" ;;
+      get) if [[ -f "$store/$ns/${args[0]}" ]]; then cat "$store/$ns/${args[0]}"; echo; fi ;;
+      list) ls -1 "$store/$ns" ;;
+      rebuild) ;;
+      *) exit 2 ;;
+    esac
+    ;;
+  *) exit 2 ;;
+esac

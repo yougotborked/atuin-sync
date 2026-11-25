@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Two-way directory sync over Atuin's KV store (end-to-end encrypted by Atuin).
-# Usage: atuin_sync.sh /syncdir     Env: ATUIN_KV_NAMESPACE, INTERVAL, CHUNK_BYTES
+# Usage: atuin_sync.sh /syncdir     Env: ATUIN_KV_NAMESPACE, INTERVAL, CHUNK_BYTES, ONCE=1 (single pass)
 #
 # Keys:  chunk.<sha256>.<n>      base64 slice of a file's content
 #        manifest.<id>           JSON {path_b64,sha256,size,chunks,ts}; id = sha256(path NUL hash)
@@ -146,14 +146,17 @@ PY
 while :; do
   sync_now
 
-  while IFS= read -r -d '' file; do
-    publish_file "$file" || log "publish failed: ${file#"$ROOT"/}"
-  done < <(find "$ROOT" -path "$STATE" -prune -o -type f ! -name '*.conflict-*' ! -name '.*.swp' ! -name '*~' -print0)
-
+  # Fetch before publishing, so concurrent edits are detected as conflicts
+  # instead of the local publish masking the remote version.
   while IFS= read -r mkey; do
     [[ -n "$mkey" ]] || continue
     fetch_manifest "$mkey" || log "fetch failed: $mkey"
   done < <(manifest_keys)
 
+  while IFS= read -r -d '' file; do
+    publish_file "$file" || log "publish failed: ${file#"$ROOT"/}"
+  done < <(find "$ROOT" -path "$STATE" -prune -o -type f ! -name '*.conflict-*' ! -name '.*.swp' ! -name '*~' -print0)
+
+  [[ -z "${ONCE:-}" ]] || break
   sleep "$INTERVAL"
 done
