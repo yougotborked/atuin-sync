@@ -143,19 +143,28 @@ PY
   touch -- "$STATE/seen/$id"
 }
 
+log "watching $ROOT (namespace=$NS, every ${INTERVAL}s); Ctrl-C to stop"
+last_status=
 while :; do
   sync_now
+  n_manifests=0
 
   # Fetch before publishing, so concurrent edits are detected as conflicts
   # instead of the local publish masking the remote version.
   while IFS= read -r mkey; do
     [[ -n "$mkey" ]] || continue
+    n_manifests=$((n_manifests + 1))
     fetch_manifest "$mkey" || log "fetch failed: $mkey"
   done < <(manifest_keys)
 
   while IFS= read -r -d '' file; do
     publish_file "$file" || log "publish failed: ${file#"$ROOT"/}"
   done < <(find "$ROOT" -path "$STATE" -prune -o -type f ! -name '*.conflict-*' ! -name '.*.swp' ! -name '*~' -print0)
+
+  n_files=$(find "$ROOT" -path "$STATE" -prune -o -type f -print | wc -l)
+  status="idle: $n_files local file(s), $n_manifests remote manifest(s) in '$NS'"
+  [[ "$status" == "$last_status" ]] || log "$status"
+  last_status=$status
 
   [[ -z "${ONCE:-}" ]] || break
   sleep "$INTERVAL"
